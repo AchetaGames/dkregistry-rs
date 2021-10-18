@@ -37,7 +37,7 @@ pub enum Error {
     LoginReturnedBadToken,
     #[error("www-authenticate header parse error")]
     Www(#[from] crate::v2::WwwHeaderParseError),
-    #[error("request failed with status {status} and body of size {len}: {}", String::from_utf8_lossy(&body))]
+    #[error("request failed with status {status} and body of size {len}: {}", String::from_utf8_lossy(& body))]
     Client {
         status: http::StatusCode,
         len: usize,
@@ -53,6 +53,10 @@ pub enum Error {
     ReferenceParse(#[from] crate::reference::ReferenceParseError),
     #[error("requested operation requires that credentials are available")]
     NoCredentials,
+    #[error("Download Failed")]
+    DownloadFailed,
+    #[error("Missing header {0}")]
+    MissingHeader(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -60,6 +64,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_error_bounds() {
         fn check_bounds<T: Send + Sync + 'static>() {}
