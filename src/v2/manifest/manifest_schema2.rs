@@ -103,10 +103,7 @@ impl ManifestSchema2Spec {
             reqwest::Url::parse(&ep)?
         };
 
-        let r = client
-            .build_reqwest(Method::GET, url.clone())
-            .send()
-            .await?;
+        let r = client.build_reqwest(Method::GET, url.clone()).send().await?;
 
         let status = r.status();
         trace!("GET {:?}: {}", url, &status);
@@ -129,15 +126,20 @@ impl ManifestSchema2 {
     ///
     /// The returned layers list is ordered starting with the base image first.
     pub fn get_layers(&self) -> Vec<String> {
-        self.manifest_spec
-            .layers
-            .iter()
-            .map(|l| l.digest.clone())
-            .collect()
+        self.manifest_spec.layers.iter().map(|l| l.digest.clone()).collect()
     }
 
     /// Get the architecture from the config
     pub fn architecture(&self) -> String {
         self.config_blob.architecture.to_owned()
+    }
+
+    /// Get manifest size
+    pub fn size(&self) -> u64 {
+        let mut result: u64 = 0;
+        for l in self.manifest_spec.layers.iter() {
+            result += l.size;
+        }
+        return result;
     }
 }

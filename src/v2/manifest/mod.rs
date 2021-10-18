@@ -7,9 +7,11 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 
 mod manifest_schema1;
+
 pub use self::manifest_schema1::*;
 
 mod manifest_schema2;
+
 pub use self::manifest_schema2::*;
 
 impl Client {
@@ -18,9 +20,7 @@ impl Client {
     /// The name and reference parameters identify the image.
     /// The reference may be either a tag or digest.
     pub async fn get_manifest(&self, name: &str, reference: &str) -> Result<Manifest> {
-        self.get_manifest_and_ref(name, reference)
-            .await
-            .map(|(manifest, _)| manifest)
+        self.get_manifest_and_ref(name, reference).await.map(|(manifest, _)| manifest)
     }
 
     /// Fetch an image manifest and return it with its digest.
@@ -38,11 +38,7 @@ impl Client {
 
         let client_spare0 = self.clone();
 
-        let res = self
-            .build_reqwest(Method::GET, url.clone())
-            .headers(accept_headers)
-            .send()
-            .await?;
+        let res = self.build_reqwest(Method::GET, url.clone()).headers(accept_headers).send().await?;
 
         let status = res.status();
         trace!("GET '{}' status: {:?}", res.url(), status);
@@ -72,17 +68,13 @@ impl Client {
 
         match media_type {
             mediatypes::MediaTypes::ManifestV2S1Signed => Ok((
-                res.json::<ManifestSchema1Signed>()
-                    .await
-                    .map(Manifest::S1Signed)?,
+                res.json::<ManifestSchema1Signed>().await.map(Manifest::S1Signed)?,
                 content_digest,
             )),
             mediatypes::MediaTypes::ManifestV2S2 => {
                 let m = res.json::<ManifestSchema2Spec>().await?;
                 Ok((
-                    m.fetch_config_blob(client_spare0, name.to_string())
-                        .await
-                        .map(Manifest::S2)?,
+                    m.fetch_config_blob(client_spare0, name.to_string()).await.map(Manifest::S2)?,
                     content_digest,
                 ))
             }
@@ -110,11 +102,7 @@ impl Client {
 
         let accept_headers = build_accept_headers(&self.index);
 
-        let res = self
-            .build_reqwest(Method::HEAD, url)
-            .headers(accept_headers)
-            .send()
-            .await?;
+        let res = self.build_reqwest(Method::HEAD, url).headers(accept_headers).send().await?;
 
         let status = res.status();
         trace!("HEAD '{}' status: {:?}", res.url(), status);
@@ -156,19 +144,13 @@ impl Client {
 
         let mut accept_headers = header::HeaderMap::with_capacity(accept_types.len());
         for accept_type in accept_types {
-            let header_value = header::HeaderValue::from_str(&accept_type.to_string())
-                .expect("mime type is always valid header value");
+            let header_value = header::HeaderValue::from_str(&accept_type.to_string()).expect("mime type is always valid header value");
             accept_headers.insert(header::ACCEPT, header_value);
         }
 
         trace!("HEAD {:?}", url);
 
-        let r = self
-            .build_reqwest(Method::HEAD, url.clone())
-            .headers(accept_headers)
-            .send()
-            .await
-            .map_err(Error::from)?;
+        let r = self.build_reqwest(Method::HEAD, url.clone()).headers(accept_headers).send().await.map_err(Error::from)?;
 
         let status = r.status();
 
@@ -179,12 +161,8 @@ impl Client {
         );
 
         match status {
-            StatusCode::MOVED_PERMANENTLY
-            | StatusCode::TEMPORARY_REDIRECT
-            | StatusCode::FOUND
-            | StatusCode::OK => {
-                let media_type =
-                    evaluate_media_type(r.headers().get(header::CONTENT_TYPE), &r.url())?;
+            StatusCode::MOVED_PERMANENTLY | StatusCode::TEMPORARY_REDIRECT | StatusCode::FOUND | StatusCode::OK => {
+                let media_type = evaluate_media_type(r.headers().get(header::CONTENT_TYPE), &r.url())?;
                 trace!("Manifest media-type: {:?}", media_type);
                 Ok(Some(media_type))
             }
@@ -195,16 +173,13 @@ impl Client {
 }
 
 fn to_mimes(v: &[&str]) -> Vec<mime::Mime> {
-    let res = v
-        .iter()
-        .filter_map(|x| {
-            let mtype = mediatypes::MediaTypes::from_str(x);
-            match mtype {
-                Ok(m) => Some(m.to_mime()),
-                _ => None,
-            }
-        })
-        .collect();
+    let res = v.iter().filter_map(|x| {
+        let mtype = mediatypes::MediaTypes::from_str(x);
+        match mtype {
+            Ok(m) => Some(m.to_mime()),
+            _ => None,
+        }
+    }).collect();
     res
 }
 
@@ -213,9 +188,7 @@ fn evaluate_media_type(
     content_type: Option<&reqwest::header::HeaderValue>,
     url: &Url,
 ) -> Result<mediatypes::MediaTypes> {
-    let header_content_type = content_type
-        .map(|hv| hv.to_str())
-        .map(std::result::Result::unwrap_or_default);
+    let header_content_type = content_type.map(|hv| hv.to_str()).map(std::result::Result::unwrap_or_default);
 
     let is_pulp_based = url.path().starts_with("/pulp/docker/v2");
 
@@ -231,8 +204,7 @@ fn evaluate_media_type(
                     trace!("Applying workaround for pulp-based registries, e.g. Satellite");
                     mediatypes::MediaTypes::from_str(
                         "application/vnd.docker.distribution.manifest.v1+prettyjws",
-                    )
-                    .map_err(Into::into)
+                    ).map_err(Into::into)
                 }
                 _ => {
                     debug!("Received content-type '{}' from pulp-based registry. Feeling lucky and trying to parse it...", header_value);
@@ -244,8 +216,7 @@ fn evaluate_media_type(
             trace!("Applying workaround for pulp-based registries, e.g. Satellite");
             mediatypes::MediaTypes::from_str(
                 "application/vnd.docker.distribution.manifest.v1+prettyjws",
-            )
-            .map_err(Into::into)
+            ).map_err(Into::into)
         }
     }
 }
@@ -265,21 +236,17 @@ fn build_accept_headers(registry: &str) -> header::HeaderMap {
         // mediatypes::MediaTypes::ManifestList,
     ];
 
-    let accepted_types_string = accepted_types
-        .into_iter()
-        .map(|(ty, q)| {
-            format!(
-                "{}{}",
-                ty.to_string(),
-                if no_q {
-                    String::default()
-                } else {
-                    format!("; q={}", q)
-                }
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(",");
+    let accepted_types_string = accepted_types.into_iter().map(|(ty, q)| {
+        format!(
+            "{}{}",
+            ty.to_string(),
+            if no_q {
+                String::default()
+            } else {
+                format!("; q={}", q)
+            }
+        )
+    }).collect::<Vec<_>>().join(",");
 
     header::HeaderMap::from_iter(vec![(
         header::ACCEPT,
@@ -305,6 +272,8 @@ pub enum ManifestError {
     ArchitectureMismatch,
     #[error("manifest {0} does not support the 'layer_digests' method")]
     LayerDigestsUnsupported(String),
+    #[error("manifest {0} does not support the 'size' method")]
+    LayerSizeUnsupported(String),
     #[error("manifest {0} does not support the 'architecture' method")]
     ArchitectureNotSupported(String),
 }
@@ -318,18 +287,14 @@ impl Manifest {
             (Manifest::S1Signed(m), _, None) => Ok(m.get_layers()),
             (Manifest::S2(m), _, None) => Ok(m.get_layers()),
             (Manifest::S1Signed(m), Ok(ref self_architectures), Some(ref a)) => {
-                let self_a = self_architectures
-                    .first()
-                    .ok_or(ManifestError::NoArchitecture)?;
+                let self_a = self_architectures.first().ok_or(ManifestError::NoArchitecture)?;
                 if self_a != a {
                     return Err(ManifestError::ArchitectureMismatch.into());
                 }
                 Ok(m.get_layers())
             }
             (Manifest::S2(m), Ok(ref self_architectures), Some(ref a)) => {
-                let self_a = self_architectures
-                    .first()
-                    .ok_or(ManifestError::NoArchitecture)?;
+                let self_a = self_architectures.first().ok_or(ManifestError::NoArchitecture)?;
                 if self_a != a {
                     return Err(ManifestError::ArchitectureMismatch.into());
                 }
@@ -337,6 +302,15 @@ impl Manifest {
             }
             // Manifest::ML(_) => TODO(steveeJ),
             _ => Err(ManifestError::LayerDigestsUnsupported(format!("{:?}", self)).into()),
+        }
+    }
+
+    /// The architectures of the image the manifest points to, if available.
+    pub fn download_size(&self) -> Result<u64> {
+        match self {
+            Manifest::S2(m) => Ok(m.size()),
+            // Manifest::ML(_) => TODO(steveeJ),
+            _ => Err(ManifestError::LayerSizeUnsupported(format!("{:?}", self)).into()),
         }
     }
 
