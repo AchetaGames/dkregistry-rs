@@ -144,6 +144,7 @@ impl Client {
     pub async fn get_blob_with_progress_file(&self, name: &str, hash: &str, sender: Option<Sender<u64>>, target_dir: &Path) -> Result<PathBuf> {
         let digest = ContentDigest::try_new(hash.to_string())?;
         let mut target = target_dir.to_path_buf();
+        std::fs::create_dir_all(&target);
         target.push(hash);
 
         let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
