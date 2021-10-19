@@ -3,6 +3,7 @@ extern crate tokio;
 
 mod common;
 
+use futures::stream::StreamExt;
 use std::result::Result;
 use std::{boxed, error};
 
@@ -41,19 +42,15 @@ async fn run(
     passwd: Option<String>,
     login_scope: String,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
-    env_logger::Builder::new()
-        .filter(Some("dkregistry"), log::LevelFilter::Trace)
-        .filter(Some("trace"), log::LevelFilter::Trace)
-        .try_init()?;
+    env_logger::Builder::new().filter(Some("dkregistry"), log::LevelFilter::Trace).filter(Some("trace"), log::LevelFilter::Trace).try_init()?;
 
-    let client = dkregistry::v2::Client::configure()
-        .registry(host)
-        .insecure_registry(false)
-        .username(user)
-        .password(passwd)
-        .build()?;
+    let client = dkregistry::v2::Client::configure().registry(host).insecure_registry(false).username(user).password(passwd).build()?;
 
     let dclient = client.authenticate(&[&login_scope]).await?;
     dclient.is_auth().await?;
+
+    dclient.get_catalog(Some(7)).collect::<Vec<_>>().await.into_iter().map(Result::unwrap).for_each(|tag| {
+        println!("{:?}", tag);
+    });
     Ok(())
 }

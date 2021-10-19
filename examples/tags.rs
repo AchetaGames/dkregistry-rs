@@ -60,7 +60,7 @@ async fn run(
     let dclient = client.authenticate(&[&login_scope]).await?;
 
     dclient
-        .get_tags(&image, Some(7))
+        .get_tags(&image, Some(20))
         .collect::<Vec<_>>()
         .await
         .into_iter()

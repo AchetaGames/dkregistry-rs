@@ -14,8 +14,7 @@ async fn main() {
     let dkr_ref = match std::env::args().nth(1) {
         Some(ref x) => reference::Reference::from_str(x),
         None => reference::Reference::from_str("quay.io/coreos/etcd"),
-    }
-    .unwrap();
+    }.unwrap();
     let registry = dkr_ref.registry();
 
     println!("[{}] downloading image {}", registry, dkr_ref);
@@ -56,31 +55,24 @@ async fn run(
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
-    env_logger::Builder::new()
-        .filter(Some("dkregistry"), log::LevelFilter::Trace)
-        .filter(Some("trace"), log::LevelFilter::Trace)
-        .try_init()?;
+    env_logger::Builder::new().filter(Some("dkregistry"), log::LevelFilter::Trace).filter(Some("trace"), log::LevelFilter::Trace).try_init()?;
 
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
 
-    let client = dkregistry::v2::Client::configure()
-        .registry(&dkr_ref.registry())
-        .insecure_registry(false)
-        .username(user)
-        .password(passwd)
-        .build()?;
+    let client = dkregistry::v2::Client::configure().registry(&dkr_ref.registry()).insecure_registry(false).username(user).password(passwd).build()?;
 
     let login_scope = "";
 
     let dclient = client.authenticate(&[&login_scope]).await?;
     let manifest = dclient.get_manifest(&image, &version).await?;
+    println!("Size: {:?} ", manifest.download_size());
 
     let layers_digests = manifest.layers_digests(None)?;
-    println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
+    println!("{} -> got {} layer(s)", &image, layers_digests.len(), );
 
     for layer_digest in &layers_digests {
-        let blob = dclient.get_blob(&image, &layer_digest).await?;
+        let blob = dclient.get_blob_with_progress(&image, &layer_digest, None).await?;
         println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
     }
 
